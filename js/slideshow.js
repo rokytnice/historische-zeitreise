@@ -6,6 +6,8 @@ import { audioBufferToWavUrl } from './gemini-tts.js';
 export class Slideshow {
   constructor(facts, callbacks = {}) {
     this.facts = facts;
+    this.date = callbacks.date || '';
+    this.location = callbacks.location || '';
     this.currentIndex = 0;
     this.isPlaying = false;
     this.onFinished = callbacks.onFinished || (() => {});
@@ -70,6 +72,12 @@ export class Slideshow {
 
   _buildSlides() {
     this.slidesContainer.innerHTML = '';
+
+    // Ort und Zeit unten anzeigen
+    const locationBar = document.getElementById('cinema-location-bar');
+    if (locationBar) {
+      locationBar.textContent = `${this.location} · ${this.date}`;
+    }
 
     this.facts.forEach((fact, i) => {
       const slide = document.createElement('div');

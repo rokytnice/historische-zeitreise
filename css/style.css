@@ -573,6 +573,21 @@ dialog input:focus {
   50% { height: 14px; }
 }
 
+/* Ort & Zeit Anzeige */
+.cinema-location-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  z-index: 20;
+  pointer-events: none;
+}
+
 /* Progress Bar */
 .cinema-progress {
   position: absolute;

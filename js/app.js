@@ -11,6 +11,8 @@ let timelineData = [];
 let slideshow = null;
 let imagesLoaded = 0;
 let audioLoaded = 0;
+let currentDate = '';
+let currentLocation = '';
 
 // App-Status: idle | researching | generating | ready | playing
 let appState = 'idle';
@@ -80,6 +82,8 @@ async function startTimeTravel(date, location) {
   timelineData = [];
   imagesLoaded = 0;
   audioLoaded = 0;
+  currentDate = date;
+  currentLocation = location;
 
   try {
     // Stufe 1: Recherche
@@ -141,6 +145,8 @@ function startSlideshow() {
   setState('playing');
 
   slideshow = new Slideshow(timelineData, {
+    date: currentDate,
+    location: currentLocation,
     onFinished: () => {
       setState('idle');
       UI.hideLoading();
