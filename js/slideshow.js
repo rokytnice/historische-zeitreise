@@ -39,28 +39,12 @@ export class Slideshow {
     this.currentIndex = 0;
     this.onStateChange('playing');
 
-    // Audio-Kontext sofort beim User-Klick entsperren (Mobile)
-    this._unlockAudio();
-
     this._buildSlides();
     this.overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', this._onKeyDown);
 
     setTimeout(() => this._playSlide(0), 800);
-  }
-
-  _unlockAudio() {
-    // Stilles Audio abspielen um den Audio-Kontext zu entsperren (Mobile-Browser)
-    try {
-      this.audioPlayer.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-      this.audioPlayer.volume = 0.01;
-      const p = this.audioPlayer.play();
-      if (p) p.catch(() => {});
-      log('Cinema: Audio-Kontext entsperrt');
-    } catch (e) {
-      log('Cinema: Audio-Unlock fehlgeschlagen', e);
-    }
   }
 
   stop() {
@@ -238,7 +222,7 @@ export class Slideshow {
       <h2>Zeitreise beendet</h2>
       <div class="cinema-end-buttons">
         <button class="btn btn-primary" id="cinema-replay-btn">Nochmal abspielen</button>
-        <button class="btn btn-secondary" id="cinema-exit-btn">Beenden</button>
+        <button class="btn btn-secondary" id="cinema-exit-btn">Neue Zeitreise</button>
       </div>
     `;
 

@@ -59,6 +59,8 @@ function bindEvents() {
       return;
     }
 
+    // Audio-Kontext sofort beim User-Klick entsperren (für Mobile)
+    unlockAudio();
     await startTimeTravel(date, location);
   });
 
@@ -83,13 +85,9 @@ async function startTimeTravel(date, location) {
     // Stufe 1: Recherche
     timelineData = await researchHistory(date, location);
 
-    // Fakten sofort anzeigen
-    UI.showResults();
-    UI.renderCards(timelineData);
-
-    // Stufe 2 + 3: Bilder und Audio parallel generieren
+    // Medien generieren (Ladebildschirm bleibt sichtbar)
     setState('generating');
-    UI.setMediaProgress(0, 0, timelineData.length);
+    UI.setLoadingText('Generiere Bilder und Audio...');
 
     const imagePromise = generateAllImages(timelineData, (id, blob) => {
       imagesLoaded++;
@@ -104,8 +102,9 @@ async function startTimeTravel(date, location) {
 
     await Promise.all([imagePromise, audioPromise]);
 
+    // Slideshow automatisch starten
     setState('ready');
-    UI.showPlayButton();
+    startSlideshow();
 
   } catch (err) {
     log('Fehler:', err);
@@ -127,14 +126,25 @@ async function startTimeTravel(date, location) {
   }
 }
 
+// Audio-Kontext entsperren (muss direkt im User-Click-Handler aufgerufen werden)
+function unlockAudio() {
+  try {
+    const a = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+    a.volume = 0.01;
+    const p = a.play();
+    if (p) p.catch(() => {});
+    log('Audio-Kontext entsperrt');
+  } catch (e) {}
+}
+
 function startSlideshow() {
   setState('playing');
 
   slideshow = new Slideshow(timelineData, {
     onFinished: () => {
-      setState('ready');
-      UI.showPlayButton();
-      document.getElementById('new-journey-btn').classList.remove('hidden');
+      setState('idle');
+      UI.showInput();
+      document.getElementById('results-section').classList.add('hidden');
     },
     onStateChange: (state) => log('Cinema-Status:', state)
   });
