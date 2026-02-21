@@ -126,6 +126,10 @@ export class Slideshow {
     await this._pause(1200);
     if (!this.isPlaying) return;
 
+    // Text ausblenden wenn Audio startet
+    const textOverlay = slide?.querySelector('.cinema-text-overlay');
+    if (textOverlay) textOverlay.classList.add('audio-playing');
+
     // Audio abspielen
     if (fact.audioBuffer) {
       log('Cinema: Spiele generiertes Audio ab');
@@ -136,6 +140,9 @@ export class Slideshow {
     }
 
     if (!this.isPlaying) return;
+
+    // Text wieder einblenden nach Audio
+    if (textOverlay) textOverlay.classList.remove('audio-playing');
 
     // Pause - Bild wirken lassen
     await this._pause(CONFIG.CARD_PAUSE_MS);
