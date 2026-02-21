@@ -62,8 +62,6 @@ function bindEvents() {
 
   // Steuerung
   document.getElementById('play-btn').addEventListener('click', startSlideshow);
-  document.getElementById('stop-btn').addEventListener('click', stopSlideshow);
-  document.getElementById('restart-btn').addEventListener('click', startSlideshow);
   document.getElementById('new-journey-btn').addEventListener('click', resetApp);
   document.getElementById('retry-btn')?.addEventListener('click', () => {
     UI.hideError();
