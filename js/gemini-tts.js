@@ -119,13 +119,10 @@ export function audioBufferToWavUrl(pcmBuffer) {
   writeString(view, 36, 'data');
   view.setUint32(40, dataSize, true);
 
-  // PCM Daten: Gemini liefert Big-Endian L16, WAV braucht Little-Endian
-  const pcmView = new DataView(pcmBuffer);
-  const wavDataView = new DataView(wavBuffer, 44);
-  for (let i = 0; i < dataSize; i += 2) {
-    const sample = pcmView.getInt16(i, false); // Big-Endian lesen
-    wavDataView.setInt16(i, sample, true);      // Little-Endian schreiben
-  }
+  // PCM Daten direkt kopieren (Gemini liefert Little-Endian L16)
+  const pcmBytes = new Uint8Array(pcmBuffer);
+  const wavBytes = new Uint8Array(wavBuffer, 44);
+  wavBytes.set(pcmBytes);
 
   const blob = new Blob([wavBuffer], { type: 'audio/wav' });
   return URL.createObjectURL(blob);
