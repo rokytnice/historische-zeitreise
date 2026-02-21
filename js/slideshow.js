@@ -270,45 +270,43 @@ export class Slideshow {
 
   _applyDayPhase(index) {
     const total = this.facts.length;
-    const progress = total > 1 ? index / (total - 1) : 0; // 0.0 bis 1.0
+    const progress = total > 1 ? index / (total - 1) : 0;
 
-    // Tagesverlauf: Morgen → Mittag → Abend → Nacht
+    // Tagesverlauf über Hintergrundfarbe + Bildfilter
+    // Bei 3 Fakten: 0=Morgen, 1=Mittag/Nachmittag, 2=Abend/Nacht
     const dayOverlay = document.getElementById('cinema-day-overlay');
-    if (!dayOverlay) return;
+    const slide = document.getElementById(`cinema-slide-${index}`);
 
-    let gradient, filter;
-    if (progress < 0.25) {
-      // Morgen: warmes Goldlicht
-      const t = progress / 0.25;
-      gradient = `linear-gradient(to bottom, rgba(255,180,80,${0.2 - t * 0.15}), rgba(255,140,50,${0.15 - t * 0.1}))`;
-      filter = `brightness(${0.85 + t * 0.15}) saturate(${1.1 - t * 0.1})`;
-    } else if (progress < 0.5) {
-      // Mittag: klares helles Licht
-      gradient = 'linear-gradient(to bottom, transparent, transparent)';
-      filter = 'brightness(1.0) saturate(1.0)';
-    } else if (progress < 0.75) {
-      // Abend: warme Rottöne
-      const t = (progress - 0.5) / 0.25;
-      gradient = `linear-gradient(to bottom, rgba(255,100,30,${t * 0.2}), rgba(180,50,20,${t * 0.15}))`;
-      filter = `brightness(${1.0 - t * 0.15}) saturate(${1.0 + t * 0.3})`;
+    let bgColor, imgFilter, phaseName;
+
+    if (progress <= 0.33) {
+      // Morgen: warmes Orange-Gold
+      bgColor = `rgba(255, 160, 50, 0.25)`;
+      imgFilter = 'brightness(0.9) sepia(0.3) saturate(1.3) hue-rotate(-10deg)';
+      phaseName = 'Morgen';
+    } else if (progress <= 0.66) {
+      // Mittag/Nachmittag: helles klares Licht
+      bgColor = `rgba(255, 240, 200, 0.1)`;
+      imgFilter = 'brightness(1.05) saturate(1.1)';
+      phaseName = 'Mittag';
     } else {
-      // Nacht: blaues dunkles Licht
-      const t = (progress - 0.75) / 0.25;
-      gradient = `linear-gradient(to bottom, rgba(20,30,80,${0.2 + t * 0.25}), rgba(5,10,40,${0.3 + t * 0.2}))`;
-      filter = `brightness(${0.85 - t * 0.25}) saturate(${1.3 - t * 0.4})`;
+      // Abend/Nacht: tiefes Blau-Violett
+      bgColor = `rgba(15, 20, 80, 0.4)`;
+      imgFilter = 'brightness(0.6) saturate(0.8) hue-rotate(20deg)';
+      phaseName = 'Abend';
     }
 
-    dayOverlay.style.background = gradient;
+    if (dayOverlay) {
+      dayOverlay.style.background = bgColor;
+    }
 
-    // Filter auf alle Bilder des aktuellen Slides anwenden
-    const slide = document.getElementById(`cinema-slide-${index}`);
     if (slide) {
       slide.querySelectorAll('.cinema-slide-image').forEach(img => {
-        img.style.filter = filter;
+        img.style.filter = imgFilter;
       });
     }
 
-    log(`Cinema: Tagesphase ${Math.round(progress * 100)}% - ${progress < 0.25 ? 'Morgen' : progress < 0.5 ? 'Mittag' : progress < 0.75 ? 'Abend' : 'Nacht'}`);
+    log(`Cinema: Tagesphase ${phaseName} (${Math.round(progress * 100)}%)`);
   }
 
   _startImageRotation(slide) {
