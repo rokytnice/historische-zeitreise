@@ -102,7 +102,8 @@ async function startTimeTravel(date, location) {
 
     await Promise.all([imagePromise, audioPromise]);
 
-    // Slideshow automatisch starten
+    // Ladebildschirm ausblenden und Slideshow starten
+    UI.hideLoading();
     setState('ready');
     startSlideshow();
 
@@ -143,8 +144,9 @@ function startSlideshow() {
   slideshow = new Slideshow(timelineData, {
     onFinished: () => {
       setState('idle');
+      UI.hideLoading();
+      UI.hideError();
       UI.showInput();
-      document.getElementById('results-section').classList.add('hidden');
     },
     onStateChange: (state) => log('Cinema-Status:', state)
   });
