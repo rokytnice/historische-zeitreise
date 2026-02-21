@@ -6,23 +6,28 @@ const IMAGES_PER_FACT = 3;
 
 // Generiert mehrere Bilder pro Fakt (Gemini + Wikimedia Fallback)
 export async function generateImagesForFact(promptText, factText = '') {
-  const images = [];
+  // Stufe 2a: Gemini nur 1x testen ob verfügbar
+  const geminiImage = await tryGeminiImage(promptText);
+  if (geminiImage) {
+    // Gemini funktioniert - alle 3 Bilder damit generieren
+    const images = [geminiImage];
+    const remaining = await Promise.all(
+      Array.from({ length: IMAGES_PER_FACT - 1 }, () => tryGeminiImage(promptText))
+    );
+    images.push(...remaining.filter(Boolean));
 
-  // Stufe 2a: Gemini Bildgenerierung versuchen (mehrere Bilder)
-  for (let i = 0; i < IMAGES_PER_FACT && images.length < IMAGES_PER_FACT; i++) {
-    const geminiImage = await tryGeminiImage(promptText);
-    if (geminiImage) images.push(geminiImage);
-    else break; // Gemini nicht verfügbar, zu Wikimedia wechseln
+    // Fehlende mit Wikimedia auffüllen
+    if (images.length < IMAGES_PER_FACT) {
+      const wikiImages = await tryWikimediaImages(factText || promptText, IMAGES_PER_FACT - images.length);
+      images.push(...wikiImages);
+    }
+    return images;
   }
 
-  // Stufe 2b: Fehlende Bilder mit Wikimedia auffüllen
-  if (images.length < IMAGES_PER_FACT) {
-    log('Stufe 2b: Fallback auf Wikimedia Commons...');
-    const wikiImages = await tryWikimediaImages(factText || promptText, IMAGES_PER_FACT - images.length);
-    images.push(...wikiImages);
-  }
-
-  return images.length > 0 ? images : [null];
+  // Stufe 2b: Gemini nicht verfügbar - direkt 3 Wikimedia-Bilder holen
+  log('Stufe 2b: Fallback auf Wikimedia Commons (3 Bilder)...');
+  const wikiImages = await tryWikimediaImages(factText || promptText, IMAGES_PER_FACT);
+  return wikiImages.length > 0 ? wikiImages : [null];
 }
 
 async function tryGeminiImage(promptText, retries = 1) {
@@ -101,7 +106,7 @@ async function tryWikimediaImages(searchText, count = 3) {
       generator: 'search',
       gsrsearch: query,
       gsrnamespace: '6',
-      gsrlimit: String(count + 5), // Mehr laden für Filter-Puffer
+      gsrlimit: String(count + 10), // Mehr laden für Filter-Puffer
       prop: 'imageinfo',
       iiprop: 'url|extmetadata|size',
       iiurlwidth: '800',

@@ -78,6 +78,7 @@ export class Slideshow {
 
       const images = fact.imageBlobs || [fact.imageBlob];
       const validImages = images.filter(Boolean);
+      log(`Cinema: Slide ${i} hat ${validImages.length} Bilder`);
 
       // Mehrere Bilder als überlagerte Schichten (Crossfade)
       const imagesHtml = validImages.length > 0
