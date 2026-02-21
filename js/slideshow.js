@@ -172,7 +172,19 @@ export class Slideshow {
     });
   }
 
-  _speak(text) {
+  async _speak(text) {
+    // Text in kurze Sätze aufteilen (Chrome-Bug: stoppt nach ~15s bei langen Utterances)
+    const sentences = this._splitIntoSentences(text);
+    log(`Cinema: ${sentences.length} Sätze zu sprechen`);
+
+    for (const sentence of sentences) {
+      if (!this.isPlaying) return;
+      await this._speakSentence(sentence);
+    }
+    log('Cinema: Sprachausgabe beendet');
+  }
+
+  _speakSentence(text) {
     return new Promise((resolve) => {
       window.speechSynthesis.cancel();
 
@@ -180,37 +192,44 @@ export class Slideshow {
       utterance.lang = CONFIG.SPEECH_LANG;
       utterance.rate = CONFIG.SPEECH_RATE;
 
-      utterance.onend = () => {
-        log('Cinema: Sprachausgabe beendet');
-        resolve();
-      };
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
 
-      utterance.onerror = (e) => {
-        log('Cinema: Sprachfehler', e);
-        resolve();
-      };
+      // Chrome resume-Workaround für einzelne Sätze
+      const resumeId = setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          clearInterval(resumeId);
+          return;
+        }
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }, 5000);
 
-      this._chromeWorkaround();
+      utterance.onend = () => { clearInterval(resumeId); resolve(); };
+      utterance.onerror = () => { clearInterval(resumeId); resolve(); };
+
       window.speechSynthesis.speak(utterance);
+
+      // Safety-Timeout: falls onend nie feuert (max 30s pro Satz)
+      setTimeout(() => {
+        clearInterval(resumeId);
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        resolve();
+      }, 30000);
     });
+  }
+
+  _splitIntoSentences(text) {
+    // Teile an Satzenden (. ! ? :) aber behalte die Interpunktion
+    return text
+      .match(/[^.!?:]+[.!?:]+/g)
+      ?.map(s => s.trim())
+      ?.filter(s => s.length > 0)
+      || [text]; // Fallback: ganzer Text wenn kein Satzende gefunden
   }
 
   _pause(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  _chromeWorkaround() {
-    if (this._resumeInterval) clearInterval(this._resumeInterval);
-    this._resumeInterval = setInterval(() => {
-      if (!this.isPlaying) {
-        clearInterval(this._resumeInterval);
-        return;
-      }
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }
-    }, 10000);
   }
 
   _escapeHtml(text) {
