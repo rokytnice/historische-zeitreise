@@ -144,10 +144,14 @@ export function hideStopButton() {
 }
 
 export function setImageProgress(done, total) {
+  setMediaProgress(done, 0, total);
+}
+
+export function setMediaProgress(images, audio, total) {
   const el = $('#image-progress');
   if (el) {
-    el.textContent = `Bilder: ${done}/${total}`;
-    if (done >= total) {
+    el.textContent = `Bilder: ${images}/${total} · Audio: ${audio}/${total}`;
+    if (images >= total && audio >= total) {
       el.classList.add('complete');
     }
   }

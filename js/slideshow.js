@@ -1,6 +1,7 @@
-// slideshow.js - Filmischer Cinema-Modus mit Web Speech API
+// slideshow.js - Filmischer Cinema-Modus mit generiertem Audio
 
 import { CONFIG, log } from './config.js';
+import { audioBufferToWavUrl } from './gemini-tts.js';
 
 export class Slideshow {
   constructor(facts, callbacks = {}) {
@@ -9,6 +10,7 @@ export class Slideshow {
     this.isPlaying = false;
     this.onFinished = callbacks.onFinished || (() => {});
     this.onStateChange = callbacks.onStateChange || (() => {});
+    this.currentAudio = null;
 
     this.overlay = document.getElementById('cinema-overlay');
     this.slidesContainer = document.getElementById('cinema-slides');
@@ -19,12 +21,11 @@ export class Slideshow {
   }
 
   static isSupported() {
-    return 'speechSynthesis' in window;
+    return true; // Audio-Files funktionieren überall
   }
 
   _bindEvents() {
     document.getElementById('cinema-close-btn').addEventListener('click', () => this.stop());
-    // ESC zum Beenden
     this._onKeyDown = (e) => {
       if (e.key === 'Escape') this.stop();
     };
@@ -35,22 +36,28 @@ export class Slideshow {
     this.currentIndex = 0;
     this.onStateChange('playing');
 
-    // Cinema-Overlay anzeigen
     this._buildSlides();
     this.overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', this._onKeyDown);
 
-    // Kurze Pause bevor es losgeht
     setTimeout(() => this._playSlide(0), 800);
   }
 
   stop() {
     this.isPlaying = false;
-    window.speechSynthesis.cancel();
-    if (this._resumeInterval) clearInterval(this._resumeInterval);
 
-    // Cinema-Overlay verstecken
+    // Audio stoppen
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+
+    // Fallback: Web Speech stoppen
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
     this.overlay.classList.add('hidden');
     document.body.style.overflow = '';
     document.removeEventListener('keydown', this._onKeyDown);
@@ -87,7 +94,6 @@ export class Slideshow {
       this.slidesContainer.appendChild(slide);
     });
 
-    // Update Counter
     this._updateProgress(0);
   }
 
@@ -102,32 +108,30 @@ export class Slideshow {
 
     log(`Cinema: Slide ${index + 1}/${this.facts.length}`);
 
-    // Alle Slides deaktivieren, aktuellen aktivieren
+    // Slide aktivieren mit Überblendung
     this.slidesContainer.querySelectorAll('.cinema-slide').forEach(s => s.classList.remove('active'));
     const slide = document.getElementById(`cinema-slide-${index}`);
     if (slide) {
-      // Reset animations by forcing reflow
       const textOverlay = slide.querySelector('.cinema-text-overlay');
       textOverlay.style.display = 'none';
-      slide.offsetHeight; // force reflow
+      slide.offsetHeight;
       textOverlay.style.display = '';
-
       slide.classList.add('active');
     }
 
     this._updateProgress(index);
 
-    // Warte kurz für die Überblendung
+    // Überblendung abwarten
     await this._pause(1200);
-
     if (!this.isPlaying) return;
 
-    // Fakt vorlesen
-    if (Slideshow.isSupported()) {
-      await this._speak(fact.fact);
+    // Audio abspielen (generiertes File oder Web Speech Fallback)
+    if (fact.audioBuffer) {
+      log('Cinema: Spiele generiertes Audio ab');
+      await this._playAudioBuffer(fact.audioBuffer);
     } else {
-      // Ohne Sprache: Text einfach anzeigen lassen
-      await this._pause(5000);
+      log('Cinema: Fallback auf Web Speech API');
+      await this._speakFallback(fact.fact);
     }
 
     if (!this.isPlaying) return;
@@ -135,20 +139,74 @@ export class Slideshow {
     // Pause - Bild wirken lassen
     await this._pause(CONFIG.CARD_PAUSE_MS);
 
-    // Nächster Slide
     this._playSlide(index + 1);
+  }
+
+  _playAudioBuffer(pcmBuffer) {
+    return new Promise((resolve) => {
+      const wavUrl = audioBufferToWavUrl(pcmBuffer);
+      if (!wavUrl) {
+        resolve();
+        return;
+      }
+
+      const audio = new Audio(wavUrl);
+      this.currentAudio = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(wavUrl);
+        this.currentAudio = null;
+        resolve();
+      };
+
+      audio.onerror = (e) => {
+        log('Cinema: Audio-Wiedergabe-Fehler', e);
+        URL.revokeObjectURL(wavUrl);
+        this.currentAudio = null;
+        resolve();
+      };
+
+      audio.play().catch((err) => {
+        log('Cinema: Audio play() Fehler', err);
+        resolve();
+      });
+    });
+  }
+
+  async _speakFallback(text) {
+    if (!('speechSynthesis' in window)) {
+      await this._pause(4000);
+      return;
+    }
+
+    const sentences = text
+      .match(/[^.!?:]+[.!?:]+/g)
+      ?.map(s => s.trim())
+      ?.filter(s => s.length > 0) || [text];
+
+    for (const sentence of sentences) {
+      if (!this.isPlaying) return;
+      await new Promise((resolve) => {
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(sentence);
+        utt.lang = CONFIG.SPEECH_LANG;
+        utt.rate = CONFIG.SPEECH_RATE;
+        utt.onend = resolve;
+        utt.onerror = resolve;
+        window.speechSynthesis.speak(utt);
+        setTimeout(resolve, 20000);
+      });
+    }
   }
 
   _updateProgress(index) {
     const total = this.facts.length;
     this.counter.textContent = `${index + 1} / ${total}`;
-    const percent = ((index + 1) / total) * 100;
-    this.progressBar.style.width = `${percent}%`;
+    this.progressBar.style.width = `${((index + 1) / total) * 100}%`;
   }
 
   _showEndScreen() {
     this.isPlaying = false;
-    if (this._resumeInterval) clearInterval(this._resumeInterval);
 
     const endScreen = document.createElement('div');
     endScreen.className = 'cinema-end';
@@ -170,62 +228,6 @@ export class Slideshow {
     endScreen.querySelector('#cinema-exit-btn').addEventListener('click', () => {
       this.stop();
     });
-  }
-
-  async _speak(text) {
-    // Text in kurze Sätze aufteilen (Chrome-Bug: stoppt nach ~15s bei langen Utterances)
-    const sentences = this._splitIntoSentences(text);
-    log(`Cinema: ${sentences.length} Sätze zu sprechen`);
-
-    for (const sentence of sentences) {
-      if (!this.isPlaying) return;
-      await this._speakSentence(sentence);
-    }
-    log('Cinema: Sprachausgabe beendet');
-  }
-
-  _speakSentence(text) {
-    return new Promise((resolve) => {
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = CONFIG.SPEECH_LANG;
-      utterance.rate = CONFIG.SPEECH_RATE;
-
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-
-      // Chrome resume-Workaround für einzelne Sätze
-      const resumeId = setInterval(() => {
-        if (!window.speechSynthesis.speaking) {
-          clearInterval(resumeId);
-          return;
-        }
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }, 5000);
-
-      utterance.onend = () => { clearInterval(resumeId); resolve(); };
-      utterance.onerror = () => { clearInterval(resumeId); resolve(); };
-
-      window.speechSynthesis.speak(utterance);
-
-      // Safety-Timeout: falls onend nie feuert (max 30s pro Satz)
-      setTimeout(() => {
-        clearInterval(resumeId);
-        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-        resolve();
-      }, 30000);
-    });
-  }
-
-  _splitIntoSentences(text) {
-    // Teile an Satzenden (. ! ? :) aber behalte die Interpunktion
-    return text
-      .match(/[^.!?:]+[.!?:]+/g)
-      ?.map(s => s.trim())
-      ?.filter(s => s.length > 0)
-      || [text]; // Fallback: ganzer Text wenn kein Satzende gefunden
   }
 
   _pause(ms) {

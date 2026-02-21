@@ -3,12 +3,14 @@
 import { getApiKey, setApiKey, clearApiKey, log } from './config.js';
 import { researchHistory } from './gemini-research.js';
 import { generateAllImages } from './gemini-image.js';
+import { generateAllAudio } from './gemini-tts.js';
 import { Slideshow } from './slideshow.js';
 import * as UI from './ui.js';
 
 let timelineData = [];
 let slideshow = null;
 let imagesLoaded = 0;
+let audioLoaded = 0;
 
 // App-Status: idle | researching | generating | ready | playing
 let appState = 'idle';
@@ -75,6 +77,7 @@ async function startTimeTravel(date, location) {
   UI.showLoading('Recherchiere historische Fakten...');
   timelineData = [];
   imagesLoaded = 0;
+  audioLoaded = 0;
 
   try {
     // Stufe 1: Recherche
@@ -84,15 +87,22 @@ async function startTimeTravel(date, location) {
     UI.showResults();
     UI.renderCards(timelineData);
 
-    // Stufe 2: Bilder parallel generieren
+    // Stufe 2 + 3: Bilder und Audio parallel generieren
     setState('generating');
-    UI.setImageProgress(0, timelineData.length);
+    UI.setMediaProgress(0, 0, timelineData.length);
 
-    await generateAllImages(timelineData, (id, blob) => {
+    const imagePromise = generateAllImages(timelineData, (id, blob) => {
       imagesLoaded++;
       UI.updateCardImage(id, blob);
-      UI.setImageProgress(imagesLoaded, timelineData.length);
+      UI.setMediaProgress(imagesLoaded, audioLoaded, timelineData.length);
     });
+
+    const audioPromise = generateAllAudio(timelineData, (id, buffer) => {
+      audioLoaded++;
+      UI.setMediaProgress(imagesLoaded, audioLoaded, timelineData.length);
+    });
+
+    await Promise.all([imagePromise, audioPromise]);
 
     setState('ready');
     UI.showPlayButton();
