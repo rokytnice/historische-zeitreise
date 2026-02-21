@@ -2,18 +2,27 @@
 
 import { CONFIG, getApiKey, log } from './config.js';
 
-// Versucht zuerst Gemini Image Generation, fällt auf Wikimedia Commons zurück
-export async function generateImage(promptText, factText = '') {
-  // Stufe 2a: Gemini Bildgenerierung versuchen
-  const geminiImage = await tryGeminiImage(promptText);
-  if (geminiImage) return geminiImage;
+const IMAGES_PER_FACT = 3;
 
-  // Stufe 2b: Fallback auf Wikimedia Commons (echte historische Fotos)
-  log('Stufe 2b: Fallback auf Wikimedia Commons...');
-  const wikiImage = await tryWikimediaImage(factText || promptText);
-  if (wikiImage) return wikiImage;
+// Generiert mehrere Bilder pro Fakt (Gemini + Wikimedia Fallback)
+export async function generateImagesForFact(promptText, factText = '') {
+  const images = [];
 
-  return null;
+  // Stufe 2a: Gemini Bildgenerierung versuchen (mehrere Bilder)
+  for (let i = 0; i < IMAGES_PER_FACT && images.length < IMAGES_PER_FACT; i++) {
+    const geminiImage = await tryGeminiImage(promptText);
+    if (geminiImage) images.push(geminiImage);
+    else break; // Gemini nicht verfügbar, zu Wikimedia wechseln
+  }
+
+  // Stufe 2b: Fehlende Bilder mit Wikimedia auffüllen
+  if (images.length < IMAGES_PER_FACT) {
+    log('Stufe 2b: Fallback auf Wikimedia Commons...');
+    const wikiImages = await tryWikimediaImages(factText || promptText, IMAGES_PER_FACT - images.length);
+    images.push(...wikiImages);
+  }
+
+  return images.length > 0 ? images : [null];
 }
 
 async function tryGeminiImage(promptText, retries = 1) {
@@ -82,18 +91,17 @@ async function tryGeminiImage(promptText, retries = 1) {
   return null;
 }
 
-async function tryWikimediaImage(searchText) {
-  // Schlüsselwörter aus dem Text extrahieren für die Suche
+async function tryWikimediaImages(searchText, count = 3) {
   const query = extractSearchQuery(searchText);
-  log('Stufe 2b: Wikimedia-Suche:', query);
+  log('Stufe 2b: Wikimedia-Suche:', query, `(${count} Bilder)`);
 
   try {
     const url = `https://commons.wikimedia.org/w/api.php?` + new URLSearchParams({
       action: 'query',
       generator: 'search',
       gsrsearch: query,
-      gsrnamespace: '6', // File namespace
-      gsrlimit: '5',
+      gsrnamespace: '6',
+      gsrlimit: String(count + 5), // Mehr laden für Filter-Puffer
       prop: 'imageinfo',
       iiprop: 'url|extmetadata|size',
       iiurlwidth: '800',
@@ -102,13 +110,12 @@ async function tryWikimediaImage(searchText) {
     });
 
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) return [];
 
     const data = await response.json();
     const pages = data?.query?.pages;
-    if (!pages) return null;
+    if (!pages) return [];
 
-    // Beste Bild-Datei finden (bevorzuge JPG/PNG, keine SVG/PDF)
     const candidates = Object.values(pages)
       .filter(p => {
         const title = (p.title || '').toLowerCase();
@@ -122,16 +129,13 @@ async function tryWikimediaImage(searchText) {
       }))
       .filter(c => c.thumbUrl);
 
-    if (candidates.length === 0) return null;
-
-    // Nimm das erste gute Ergebnis
-    const best = candidates[0];
-    log('Stufe 2b: Wikimedia Bild gefunden:', best.title);
-    return best.thumbUrl;
+    const results = candidates.slice(0, count).map(c => c.thumbUrl);
+    log(`Stufe 2b: ${results.length} Wikimedia Bilder gefunden`);
+    return results;
 
   } catch (err) {
     log('Stufe 2b: Wikimedia Fehler', err.message);
-    return null;
+    return [];
   }
 }
 
@@ -160,11 +164,12 @@ function extractSearchQuery(text) {
 }
 
 export async function generateAllImages(facts, onImageReady) {
-  // Alle Bilder parallel generieren
+  // 3 Bilder pro Fakt parallel generieren
   const promises = facts.map(async (item) => {
-    const blob = await generateImage(item.imagePrompt, item.fact);
-    item.imageBlob = blob;
-    if (onImageReady) onImageReady(item.id, blob);
+    const images = await generateImagesForFact(item.imagePrompt, item.fact);
+    item.imageBlobs = images; // Array von Bild-URLs
+    item.imageBlob = images[0] || null; // Erstes Bild als Vorschau
+    if (onImageReady) onImageReady(item.id, images);
     return item;
   });
 

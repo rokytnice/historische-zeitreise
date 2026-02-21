@@ -440,11 +440,15 @@ dialog input:focus {
 
 /* Ken Burns Effekt */
 .cinema-slide-image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   animation: kenBurns 20s ease forwards;
   filter: brightness(0.7);
+  transition: opacity 1.5s ease;
 }
 
 .cinema-slide:nth-child(1) .cinema-slide-image { animation-name: kenBurns1; }

@@ -89,9 +89,8 @@ async function startTimeTravel(date, location) {
     setState('generating');
     UI.setLoadingText('Generiere Bilder und Audio...');
 
-    const imagePromise = generateAllImages(timelineData, (id, blob) => {
+    const imagePromise = generateAllImages(timelineData, (id, images) => {
       imagesLoaded++;
-      UI.updateCardImage(id, blob);
       UI.setMediaProgress(imagesLoaded, audioLoaded, timelineData.length);
     });
 

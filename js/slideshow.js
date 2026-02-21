@@ -76,13 +76,18 @@ export class Slideshow {
       slide.className = 'cinema-slide';
       slide.id = `cinema-slide-${i}`;
 
-      const hasImage = fact.imageBlob;
+      const images = fact.imageBlobs || [fact.imageBlob];
+      const validImages = images.filter(Boolean);
+
+      // Mehrere Bilder als überlagerte Schichten (Crossfade)
+      const imagesHtml = validImages.length > 0
+        ? validImages.map((src, j) =>
+            `<img class="cinema-slide-image" data-img-index="${j}" src="${src}" alt="" style="${j === 0 ? 'opacity:1' : 'opacity:0'}">`
+          ).join('')
+        : `<div class="cinema-slide-placeholder"></div>`;
 
       slide.innerHTML = `
-        ${hasImage
-          ? `<img class="cinema-slide-image" src="${fact.imageBlob}" alt="">`
-          : `<div class="cinema-slide-placeholder"></div>`
-        }
+        ${imagesHtml}
         <div class="cinema-text-overlay">
           <div class="cinema-fact-number">${fact.id}</div>
           <p class="cinema-fact-text">${this._escapeHtml(fact.fact)}</p>
@@ -130,6 +135,9 @@ export class Slideshow {
     const textOverlay = slide?.querySelector('.cinema-text-overlay');
     if (textOverlay) textOverlay.classList.add('audio-playing');
 
+    // Bilder-Wechsel starten (Crossfade während Audio läuft)
+    const imageRotation = this._startImageRotation(slide);
+
     // Audio abspielen
     if (fact.audioBuffer) {
       log('Cinema: Spiele generiertes Audio ab');
@@ -140,6 +148,9 @@ export class Slideshow {
     }
 
     if (!this.isPlaying) return;
+
+    // Bilder-Wechsel stoppen
+    this._stopImageRotation(imageRotation);
 
     // Text wieder einblenden nach Audio
     if (textOverlay) textOverlay.classList.remove('audio-playing');
@@ -243,6 +254,29 @@ export class Slideshow {
     endScreen.querySelector('#cinema-exit-btn').addEventListener('click', () => {
       this.stop();
     });
+  }
+
+  _startImageRotation(slide) {
+    if (!slide) return null;
+    const images = slide.querySelectorAll('.cinema-slide-image');
+    if (images.length <= 1) return null;
+
+    let currentImg = 0;
+    const interval = setInterval(() => {
+      // Aktuelles Bild ausblenden
+      images[currentImg].style.opacity = '0';
+      // Nächstes Bild einblenden
+      currentImg = (currentImg + 1) % images.length;
+      images[currentImg].style.opacity = '1';
+      log(`Cinema: Bild-Wechsel → ${currentImg + 1}/${images.length}`);
+    }, 4000); // Alle 4 Sekunden wechseln
+
+    return { interval, images };
+  }
+
+  _stopImageRotation(rotation) {
+    if (!rotation) return;
+    clearInterval(rotation.interval);
   }
 
   _pause(ms) {
