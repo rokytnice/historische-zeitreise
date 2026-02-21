@@ -12,6 +12,9 @@ export class Slideshow {
     this.onStateChange = callbacks.onStateChange || (() => {});
     this.currentAudio = null;
 
+    // Einen wiederverwendbaren Audio-Player erstellen
+    this.audioPlayer = new Audio();
+
     this.overlay = document.getElementById('cinema-overlay');
     this.slidesContainer = document.getElementById('cinema-slides');
     this.progressBar = document.getElementById('cinema-progress-bar');
@@ -21,7 +24,7 @@ export class Slideshow {
   }
 
   static isSupported() {
-    return true; // Audio-Files funktionieren überall
+    return true;
   }
 
   _bindEvents() {
@@ -36,6 +39,9 @@ export class Slideshow {
     this.currentIndex = 0;
     this.onStateChange('playing');
 
+    // Audio-Kontext sofort beim User-Klick entsperren (Mobile)
+    this._unlockAudio();
+
     this._buildSlides();
     this.overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -44,14 +50,25 @@ export class Slideshow {
     setTimeout(() => this._playSlide(0), 800);
   }
 
+  _unlockAudio() {
+    // Stilles Audio abspielen um den Audio-Kontext zu entsperren (Mobile-Browser)
+    try {
+      this.audioPlayer.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+      this.audioPlayer.volume = 0.01;
+      const p = this.audioPlayer.play();
+      if (p) p.catch(() => {});
+      log('Cinema: Audio-Kontext entsperrt');
+    } catch (e) {
+      log('Cinema: Audio-Unlock fehlgeschlagen', e);
+    }
+  }
+
   stop() {
     this.isPlaying = false;
 
     // Audio stoppen
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio = null;
-    }
+    this.audioPlayer.pause();
+    this.audioPlayer.removeAttribute('src');
 
     // Fallback: Web Speech stoppen
     if ('speechSynthesis' in window) {
@@ -108,7 +125,7 @@ export class Slideshow {
 
     log(`Cinema: Slide ${index + 1}/${this.facts.length}`);
 
-    // Slide aktivieren mit Überblendung
+    // Slide aktivieren
     this.slidesContainer.querySelectorAll('.cinema-slide').forEach(s => s.classList.remove('active'));
     const slide = document.getElementById(`cinema-slide-${index}`);
     if (slide) {
@@ -125,7 +142,7 @@ export class Slideshow {
     await this._pause(1200);
     if (!this.isPlaying) return;
 
-    // Audio abspielen (generiertes File oder Web Speech Fallback)
+    // Audio abspielen
     if (fact.audioBuffer) {
       log('Cinema: Spiele generiertes Audio ab');
       await this._playAudioBuffer(fact.audioBuffer);
@@ -150,24 +167,31 @@ export class Slideshow {
         return;
       }
 
-      const audio = new Audio(wavUrl);
-      this.currentAudio = audio;
+      // Wiederverwendbaren Player nutzen (bereits entsperrt)
+      this.audioPlayer.volume = 1.0;
+      this.audioPlayer.src = wavUrl;
 
-      audio.onended = () => {
+      const cleanup = () => {
         URL.revokeObjectURL(wavUrl);
-        this.currentAudio = null;
+        this.audioPlayer.onended = null;
+        this.audioPlayer.onerror = null;
+      };
+
+      this.audioPlayer.onended = () => {
+        log('Cinema: Audio fertig abgespielt');
+        cleanup();
         resolve();
       };
 
-      audio.onerror = (e) => {
-        log('Cinema: Audio-Wiedergabe-Fehler', e);
-        URL.revokeObjectURL(wavUrl);
-        this.currentAudio = null;
+      this.audioPlayer.onerror = (e) => {
+        log('Cinema: Audio-Fehler', e);
+        cleanup();
         resolve();
       };
 
-      audio.play().catch((err) => {
-        log('Cinema: Audio play() Fehler', err);
+      this.audioPlayer.play().catch((err) => {
+        log('Cinema: play() Fehler', err);
+        cleanup();
         resolve();
       });
     });
