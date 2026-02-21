@@ -120,37 +120,18 @@ async function startTimeTravel(date, location) {
 }
 
 function startSlideshow() {
-  if (!Slideshow.isSupported()) {
-    UI.showError('Dein Browser unterstützt keine Sprachausgabe.');
-    return;
-  }
-
   setState('playing');
-  UI.hidePlayButton();
-  UI.hideRestartButton();
-  UI.showStopButton();
 
   slideshow = new Slideshow(timelineData, {
-    onCardFocus: (id) => UI.highlightCard(id),
-    onCardBlur: (id) => UI.unhighlightCard(id),
     onFinished: () => {
       setState('ready');
-      UI.hideStopButton();
-      UI.showRestartButton();
+      UI.showPlayButton();
       document.getElementById('new-journey-btn').classList.remove('hidden');
     },
-    onStateChange: (state) => log('Slideshow-Status:', state)
+    onStateChange: (state) => log('Cinema-Status:', state)
   });
 
   slideshow.start();
-}
-
-function stopSlideshow() {
-  if (slideshow) slideshow.stop();
-  setState('ready');
-  UI.hideStopButton();
-  UI.showPlayButton();
-  UI.showRestartButton();
 }
 
 function resetApp() {

@@ -56,14 +56,28 @@
       <p id="image-progress"></p>
       <div id="cards-container"></div>
       <div class="controls">
-        <button class="btn btn-primary hidden" id="play-btn">Reise abspielen</button>
-        <button class="btn btn-secondary hidden" id="stop-btn">Stopp</button>
-        <button class="btn btn-secondary hidden" id="restart-btn">Nochmal abspielen</button>
+        <button class="btn btn-primary hidden" id="play-btn">Zeitreise abspielen</button>
+        <button class="btn btn-secondary hidden" id="stop-btn" style="display:none"></button>
+        <button class="btn btn-secondary hidden" id="restart-btn" style="display:none"></button>
         <button class="btn btn-secondary hidden" id="new-journey-btn">Neue Zeitreise</button>
       </div>
     </section>
 
   </main>
+
+  <!-- Cinema Overlay -->
+  <div id="cinema-overlay" class="hidden">
+    <div class="cinema-slides" id="cinema-slides"></div>
+    <div class="cinema-counter" id="cinema-counter"></div>
+    <div class="cinema-controls">
+      <button class="cinema-btn" id="cinema-close-btn" title="Beenden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="cinema-progress">
+      <div class="cinema-progress-bar" id="cinema-progress-bar"></div>
+    </div>
+  </div>
 
   <!-- API-Key Dialog -->
   <dialog id="api-key-dialog">

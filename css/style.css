@@ -409,6 +409,261 @@ dialog input:focus {
   border-color: var(--accent);
 }
 
+/* ==================== CINEMA MODE ==================== */
+#cinema-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Slide Container */
+.cinema-slides {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.cinema-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.cinema-slide.active {
+  opacity: 1;
+}
+
+/* Ken Burns Effekt */
+.cinema-slide-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: kenBurns 20s ease forwards;
+  filter: brightness(0.7);
+}
+
+.cinema-slide:nth-child(1) .cinema-slide-image { animation-name: kenBurns1; }
+.cinema-slide:nth-child(2) .cinema-slide-image { animation-name: kenBurns2; }
+.cinema-slide:nth-child(3) .cinema-slide-image { animation-name: kenBurns3; }
+
+@keyframes kenBurns1 {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.15) translate(-2%, -1%); }
+}
+
+@keyframes kenBurns2 {
+  0% { transform: scale(1.05) translate(2%, 0); }
+  100% { transform: scale(1.18) translate(-1%, -2%); }
+}
+
+@keyframes kenBurns3 {
+  0% { transform: scale(1) translate(-1%, 1%); }
+  100% { transform: scale(1.2) translate(1%, -1%); }
+}
+
+/* Fallback wenn kein Bild */
+.cinema-slide-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #000 70%);
+}
+
+/* Vignette Overlay */
+.cinema-slide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%),
+    linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+/* Text Overlay */
+.cinema-text-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem 3rem 5rem;
+  z-index: 10;
+}
+
+.cinema-fact-number {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  background: var(--accent);
+  color: #000;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.8rem;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: cinemaFadeUp 0.6s ease 0.3s forwards;
+}
+
+.cinema-fact-text {
+  font-size: 1.3rem;
+  line-height: 1.8;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  max-width: 700px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cinemaFadeUp 0.8s ease 0.5s forwards;
+}
+
+@keyframes cinemaFadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Audio Welle */
+.cinema-audio-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  margin-top: 1rem;
+  opacity: 0;
+  animation: cinemaFadeUp 0.5s ease 0.8s forwards;
+}
+
+.cinema-audio-wave span {
+  display: block;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  height: 4px;
+  animation: cinemaWave 0.8s ease-in-out infinite;
+}
+
+.cinema-audio-wave span:nth-child(2) { animation-delay: 0.1s; }
+.cinema-audio-wave span:nth-child(3) { animation-delay: 0.15s; }
+.cinema-audio-wave span:nth-child(4) { animation-delay: 0.2s; }
+.cinema-audio-wave span:nth-child(5) { animation-delay: 0.25s; }
+.cinema-audio-wave span:nth-child(6) { animation-delay: 0.3s; }
+.cinema-audio-wave span:nth-child(7) { animation-delay: 0.35s; }
+
+@keyframes cinemaWave {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+
+/* Progress Bar */
+.cinema-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  z-index: 20;
+}
+
+.cinema-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.5s ease;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Controls */
+.cinema-controls {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.8rem;
+}
+
+.cinema-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  backdrop-filter: blur(8px);
+}
+
+.cinema-btn:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--accent);
+}
+
+.cinema-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Slide Counter */
+.cinema-counter {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 20;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.4);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+}
+
+/* Ende-Screen */
+.cinema-end {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: rgba(0,0,0,0.9);
+  z-index: 15;
+  opacity: 0;
+  animation: cinemaFadeUp 0.8s ease forwards;
+}
+
+.cinema-end h2 {
+  color: var(--accent);
+  font-weight: 400;
+  font-size: 1.8rem;
+  letter-spacing: 0.05em;
+}
+
+.cinema-end-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.cinema-end .btn {
+  width: auto;
+  min-width: 160px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .header h1 {
