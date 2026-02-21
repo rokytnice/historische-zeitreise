@@ -480,6 +480,15 @@ dialog input:focus {
   background: radial-gradient(ellipse at center, #1a1a2e 0%, #000 70%);
 }
 
+/* Tagesverlauf Overlay */
+.cinema-day-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  transition: background 2s ease;
+}
+
 /* Vignette Overlay */
 .cinema-slide::after {
   content: '';
