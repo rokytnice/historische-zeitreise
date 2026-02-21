@@ -63,7 +63,7 @@ function bindEvents() {
   // Steuerung
   document.getElementById('play-btn').addEventListener('click', startSlideshow);
   document.getElementById('stop-btn').addEventListener('click', stopSlideshow);
-  document.getElementById('restart-btn').addEventListener('click', resetApp);
+  document.getElementById('restart-btn').addEventListener('click', startSlideshow);
   document.getElementById('new-journey-btn').addEventListener('click', resetApp);
   document.getElementById('retry-btn')?.addEventListener('click', () => {
     UI.hideError();
@@ -155,19 +155,25 @@ function stopSlideshow() {
 
 function resetApp() {
   if (slideshow) slideshow.stop();
+  slideshow = null;
   timelineData = [];
   imagesLoaded = 0;
   setState('idle');
 
+  // Alle Sections verstecken
   UI.hidePlayButton();
   UI.hideStopButton();
   UI.hideRestartButton();
   UI.hideError();
-
+  UI.hideLoading();
   document.getElementById('results-section').classList.add('hidden');
   document.getElementById('new-journey-btn').classList.add('hidden');
-  UI.showInput();
+  document.getElementById('cards-container').innerHTML = '';
+  document.getElementById('image-progress').textContent = '';
+  document.getElementById('image-progress').classList.remove('complete');
 
+  // Eingabe anzeigen
+  UI.showInput();
   document.getElementById('date-input').value = '';
   document.getElementById('location-input').value = '';
   document.getElementById('date-input').focus();
